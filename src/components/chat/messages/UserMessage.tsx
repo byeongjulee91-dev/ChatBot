@@ -38,9 +38,9 @@ export const UserMessage: React.FC<UserMessageProps> = ({ message, onEdit }) => 
     setEditContent(message.content);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editContent.trim() && onEdit) {
-      onEdit(message.id, editContent.trim());
+      await onEdit(message.id, editContent.trim());
     }
     setIsEditing(false);
   };

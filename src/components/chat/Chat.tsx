@@ -31,8 +31,8 @@ export const Chat: React.FC<ChatProps> = ({ chatId }) => {
     await regenerateMessage(messageId);
   };
 
-  const handleEdit = (messageId: string, newContent: string) => {
-    editMessage(messageId, newContent);
+  const handleEdit = async (messageId: string, newContent: string) => {
+    await editMessage(messageId, newContent);
   };
 
   if (!chat) {
