@@ -10,7 +10,7 @@ interface ChatProps {
 }
 
 export const Chat: React.FC<ChatProps> = ({ chatId }) => {
-  const { messages, generating, sendMessage, regenerateMessage } = useChat(chatId);
+  const { messages, generating, sendMessage, regenerateMessage, editMessage } = useChat(chatId);
   const { chats, updateChat } = useChatStore();
   const chat = chats[chatId];
 
@@ -29,6 +29,10 @@ export const Chat: React.FC<ChatProps> = ({ chatId }) => {
 
   const handleRegenerate = async (messageId: string) => {
     await regenerateMessage(messageId);
+  };
+
+  const handleEdit = (messageId: string, newContent: string) => {
+    editMessage(messageId, newContent);
   };
 
   if (!chat) {
@@ -63,6 +67,7 @@ export const Chat: React.FC<ChatProps> = ({ chatId }) => {
           <MessageList
             messages={messages}
             onRegenerate={handleRegenerate}
+            onEdit={handleEdit}
           />
         </div>
       </main>

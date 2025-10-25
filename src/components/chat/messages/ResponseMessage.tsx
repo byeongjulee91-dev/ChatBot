@@ -8,19 +8,50 @@ import { useChatStore } from '@/store';
 interface ResponseMessageProps {
   message: Message;
   onRegenerate?: () => void;
+  onEdit?: (messageId: string, newContent: string) => void;
 }
 
 export const ResponseMessage: React.FC<ResponseMessageProps> = ({
   message,
   onRegenerate,
+  onEdit,
 }) => {
   const [showActions, setShowActions] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
   const updateMessage = useChatStore((state) => state.updateMessage);
 
   const handleRating = (rating: 1 | -1) => {
     updateMessage(message.id, {
       rating: message.rating === rating ? undefined : rating,
     });
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditContent(message.content);
+  };
+
+  const handleSaveEdit = () => {
+    if (editContent.trim() && onEdit) {
+      onEdit(message.id, editContent.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent(message.content);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+    // Ctrl+Enter로 저장
+    if (e.key === 'Enter' && e.ctrlKey) {
+      handleSaveEdit();
+    }
   };
 
   return (
@@ -46,22 +77,49 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
           </svg>
         </div>
         <div className="flex flex-col">
-          <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-            {message.status === 'streaming' && message.content === '' ? (
-              <div className="flex items-center gap-2 text-gray-500">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
+          {isEditing ? (
+            <div className="bg-white border-2 border-gray-300 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm w-full">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="w-full text-sm resize-none focus:outline-none min-h-[100px] font-mono"
+                autoFocus
+                placeholder="메시지 내용을 편집하세요..."
+              />
+              <div className="flex justify-end gap-2 mt-2 pt-2 border-t">
+                <button
+                  onClick={handleCancelEdit}
+                  className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded transition-colors"
+                >
+                  취소 (Esc)
+                </button>
+                <button
+                  onClick={handleSaveEdit}
+                  className="px-3 py-1 text-xs text-white bg-primary-600 hover:bg-primary-700 rounded transition-colors"
+                >
+                  저장 (Ctrl+Enter)
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
+              {message.status === 'streaming' && message.content === '' ? (
+                <div className="flex items-center gap-2 text-gray-500">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-75" />
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-150" />
+                  </div>
+                  <span className="text-sm">응답 생성 중...</span>
                 </div>
-                <span className="text-sm">응답 생성 중...</span>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-900">
-                <MarkdownRenderer content={message.content} />
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="text-sm text-gray-900">
+                  <MarkdownRenderer content={message.content} />
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-2 mt-1">
             <Tooltip content={formatDate(message.timestamp)} position="right">
@@ -156,6 +214,29 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
                     </svg>
                   </button>
                 </Tooltip>
+
+                {onEdit && (
+                  <Tooltip content="편집">
+                    <button
+                      onClick={handleEdit}
+                      className="p-1 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                    </button>
+                  </Tooltip>
+                )}
               </div>
             )}
           </div>

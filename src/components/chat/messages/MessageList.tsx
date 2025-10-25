@@ -7,11 +7,13 @@ import { useAutoScroll } from '@/hooks';
 interface MessageListProps {
   messages: Message[];
   onRegenerate?: (messageId: string) => void;
+  onEdit?: (messageId: string, newContent: string) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   onRegenerate,
+  onEdit,
 }) => {
   const scrollRef = useAutoScroll([messages]);
 
@@ -49,7 +51,13 @@ export const MessageList: React.FC<MessageListProps> = ({
     <div className="flex flex-col">
       {messages.map((message) => {
         if (message.role === 'user') {
-          return <UserMessage key={message.id} message={message} />;
+          return (
+            <UserMessage
+              key={message.id}
+              message={message}
+              onEdit={onEdit}
+            />
+          );
         } else if (message.role === 'assistant') {
           return (
             <ResponseMessage
@@ -58,6 +66,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               onRegenerate={
                 onRegenerate ? () => onRegenerate(message.id) : undefined
               }
+              onEdit={onEdit}
             />
           );
         }
