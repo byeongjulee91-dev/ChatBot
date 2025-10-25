@@ -83,7 +83,7 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full text-sm resize-none focus:outline-none min-h-[100px] font-mono"
+                className="w-full text-sm resize-none focus:outline-none min-h-[100px] font-mono overflow-hidden"
                 autoFocus
                 placeholder="메시지 내용을 편집하세요..."
               />

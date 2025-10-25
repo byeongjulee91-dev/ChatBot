@@ -57,7 +57,7 @@ export const UserMessage: React.FC<UserMessageProps> = ({ message, onEdit }) => 
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full text-sm resize-none focus:outline-none min-h-[60px]"
+                className="w-full text-sm resize-none focus:outline-none min-h-[60px] overflow-hidden"
                 autoFocus
               />
               <div className="flex justify-end gap-2 mt-2">
