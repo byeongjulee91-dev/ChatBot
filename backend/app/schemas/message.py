@@ -52,7 +52,7 @@ class Message(MessageBase):
     status: MessageStatus
     rating: Optional[int] = None
     citations: Optional[List[Dict[str, Any]]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    message_metadata: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
