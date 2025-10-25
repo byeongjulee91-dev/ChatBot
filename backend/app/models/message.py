@@ -33,7 +33,7 @@ class Message(Base):
     status = Column(Enum(MessageStatus), nullable=False, default=MessageStatus.COMPLETED)
     rating = Column(Integer, nullable=True)  # 1 or -1
     citations = Column(JSON, nullable=True)
-    metadata = Column(JSON, nullable=True)
+    message_metadata = Column(JSON, nullable=True)
 
     # Relationships
     chat = relationship("Chat", back_populates="messages")
