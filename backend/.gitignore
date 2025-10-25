@@ -1,0 +1,8 @@
+# Database
+*.db
+*.db-journal
+*.db-wal
+chatbot.db
+
+# Uploads
+uploads/

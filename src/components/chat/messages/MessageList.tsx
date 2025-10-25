@@ -66,7 +66,6 @@ export const MessageList: React.FC<MessageListProps> = ({
               onRegenerate={
                 onRegenerate ? () => onRegenerate(message.id) : undefined
               }
-              onEdit={onEdit}
             />
           );
         }
