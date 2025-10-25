@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { Chat, Message, MessageHistory } from '@/types';
 import { v4 as uuidv4 } from 'uuid';
+import { chatsApi } from '@/services/api';
 
 interface ChatState {
   // State
@@ -11,7 +12,7 @@ interface ChatState {
   generating: boolean;
 
   // Actions
-  createChat: (title?: string) => string;
+  createChat: (title?: string) => Promise<string>;
   updateChat: (chatId: string, updates: Partial<Chat>) => void;
   deleteChat: (chatId: string) => void;
   setCurrentChat: (chatId: string | null) => void;
@@ -34,24 +35,49 @@ export const useChatStore = create<ChatState>()(
         messages: {},
         generating: false,
 
-        createChat: (title = '새 대화') => {
-          const chatId = uuidv4();
-          const chat: Chat = {
-            id: chatId,
-            title,
-            messages: {},
-            selectedModels: ['gpt-4'],
-            tags: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
+        createChat: async (title = '새 대화') => {
+          try {
+            // Create chat on backend
+            const backendChat = await chatsApi.create({ title });
 
-          set((state) => ({
-            chats: { ...state.chats, [chatId]: chat },
-            currentChatId: chatId,
-          }));
+            // Add to local state
+            const chat: Chat = {
+              id: backendChat.id,
+              title: backendChat.title,
+              messages: {},
+              selectedModels: backendChat.selected_models || ['gpt-4'],
+              tags: [],
+              createdAt: new Date(backendChat.created_at).getTime(),
+              updatedAt: backendChat.updated_at ? new Date(backendChat.updated_at).getTime() : new Date(backendChat.created_at).getTime(),
+            };
 
-          return chatId;
+            set((state) => ({
+              chats: { ...state.chats, [chat.id]: chat },
+              currentChatId: chat.id,
+            }));
+
+            return chat.id;
+          } catch (error) {
+            console.error('Failed to create chat:', error);
+            // Fallback to local creation if backend fails
+            const chatId = uuidv4();
+            const chat: Chat = {
+              id: chatId,
+              title,
+              messages: {},
+              selectedModels: ['gpt-4'],
+              tags: [],
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            };
+
+            set((state) => ({
+              chats: { ...state.chats, [chatId]: chat },
+              currentChatId: chatId,
+            }));
+
+            return chatId;
+          }
         },
 
         updateChat: (chatId, updates) =>
