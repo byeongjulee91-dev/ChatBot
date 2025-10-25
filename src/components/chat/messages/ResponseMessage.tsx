@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '@/types';
 import { MarkdownRenderer } from '@/components/markdown';
 import { formatDate } from '@/utils/format';
@@ -19,7 +19,23 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const [showActions, setShowActions] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const updateMessage = useChatStore((state) => state.updateMessage);
+
+  // textarea 높이 자동 조정
+  const adjustTextareaHeight = () => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  // 편집 모드로 전환될 때 높이 조정
+  useEffect(() => {
+    if (isEditing) {
+      adjustTextareaHeight();
+    }
+  }, [isEditing]);
 
   const handleRating = (rating: 1 | -1) => {
     updateMessage(message.id, {
@@ -32,9 +48,9 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
     setEditContent(message.content);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editContent.trim() && onEdit) {
-      onEdit(message.id, editContent.trim());
+      await onEdit(message.id, editContent.trim());
     }
     setIsEditing(false);
   };
@@ -42,6 +58,11 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
   const handleCancelEdit = () => {
     setIsEditing(false);
     setEditContent(message.content);
+  };
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditContent(e.target.value);
+    adjustTextareaHeight();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -80,10 +101,11 @@ export const ResponseMessage: React.FC<ResponseMessageProps> = ({
           {isEditing ? (
             <div className="bg-white border-2 border-gray-300 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm w-full">
               <textarea
+                ref={textareaRef}
                 value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
+                onChange={handleContentChange}
                 onKeyDown={handleKeyDown}
-                className="w-full text-sm resize-none focus:outline-none min-h-[100px] font-mono"
+                className="w-full text-sm resize-none focus:outline-none font-mono overflow-hidden"
                 autoFocus
                 placeholder="메시지 내용을 편집하세요..."
               />

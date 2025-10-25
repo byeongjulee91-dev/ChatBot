@@ -31,8 +31,8 @@ export const Chat: React.FC<ChatProps> = ({ chatId }) => {
     await regenerateMessage(messageId);
   };
 
-  const handleEdit = (messageId: string, newContent: string) => {
-    editMessage(messageId, newContent);
+  const handleEdit = async (messageId: string, newContent: string) => {
+    await editMessage(messageId, newContent);
   };
 
   if (!chat) {
@@ -62,7 +62,7 @@ export const Chat: React.FC<ChatProps> = ({ chatId }) => {
       </header>
 
       {/* Messages */}
-      <main className="flex-1 px-6 py-4">
+      <main className="flex-1 overflow-y-auto px-6 py-4">
         <div className="max-w-4xl mx-auto">
           <MessageList
             messages={messages}

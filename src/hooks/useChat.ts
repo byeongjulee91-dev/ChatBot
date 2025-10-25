@@ -121,7 +121,7 @@ export function useChat(chatId: string) {
 
   // 메시지 편집
   const editMessage = useCallback(
-    (messageId: string, newContent: string) => {
+    async (messageId: string, newContent: string) => {
       const message = messages[messageId];
       if (!message) return;
 
@@ -129,8 +129,40 @@ export function useChat(chatId: string) {
       updateMessage(messageId, {
         content: newContent,
       });
+
+      // User 메시지 편집 시 다음 assistant 메시지 재생성
+      if (message.role === 'user' && message.childrenIds.length > 0) {
+        const assistantMessageId = message.childrenIds[0];
+        const assistantMessage = messages[assistantMessageId];
+
+        if (assistantMessage && assistantMessage.role === 'assistant') {
+          setGenerating(true);
+
+          // 메시지 내용 초기화
+          updateMessage(assistantMessageId, {
+            content: '',
+            status: 'streaming',
+          });
+
+          // AI 응답 재생성 시뮬레이션
+          const responseText = `수정된 메시지 "${newContent}"에 대한 새로운 응답입니다. 실제 AI 백엔드를 연결하면 수정된 내용에 맞는 응답을 받을 수 있습니다.`;
+          let currentContent = '';
+          const words = responseText.split(' ');
+
+          for (let i = 0; i < words.length; i++) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            currentContent += (i > 0 ? ' ' : '') + words[i];
+            updateMessage(assistantMessageId, {
+              content: currentContent,
+              status: i === words.length - 1 ? 'completed' : 'streaming',
+            });
+          }
+
+          setGenerating(false);
+        }
+      }
     },
-    [messages, updateMessage]
+    [messages, updateMessage, setGenerating]
   );
 
   return {
