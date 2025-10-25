@@ -28,20 +28,73 @@ export const messagesApi = {
 
   /**
    * Generate AI response (streaming)
-   * Returns EventSource for Server-Sent Events
-   * Note: This is a placeholder. Actual implementation will be in step 3.
+   * Uses fetch API with ReadableStream for SSE
    */
-  generateStream: (_data: MessageCreateRequest): EventSource => {
+  generateStream: async (
+    data: MessageCreateRequest,
+    onChunk: (chunk: string, messageId: string) => void,
+    onComplete: (messageId: string) => void,
+    onError: (error: string) => void
+  ): Promise<void> => {
     const token = localStorage.getItem('access_token');
-    const url = new URL(`${apiClient.defaults.baseURL}/messages/generate`);
+    const url = `${apiClient.defaults.baseURL}/messages/generate`;
 
-    // Add auth token as query param for EventSource (since it doesn't support headers)
-    if (token) {
-      url.searchParams.append('token', token);
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No reader available');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonData = JSON.parse(line.substring(6));
+
+              if (jsonData.chunk) {
+                onChunk(jsonData.chunk, jsonData.message_id);
+              }
+
+              if (jsonData.done) {
+                onComplete(jsonData.message_id);
+              }
+
+              if (jsonData.error) {
+                onError(jsonData.error);
+              }
+            } catch (e) {
+              // Skip invalid JSON
+              console.warn('Failed to parse SSE data:', line);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      onError(error.message || 'Streaming failed');
     }
-
-    const eventSource = new EventSource(url.toString());
-
-    return eventSource;
   },
 };
