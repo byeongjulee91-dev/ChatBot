@@ -25,6 +25,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, [content]);
 
+  // 컴포넌트 마운트 시 자동 포커스
+  useEffect(() => {
+    if (textareaRef.current && !disabled) {
+      textareaRef.current.focus();
+    }
+  }, [disabled]);
+
   const handleSend = () => {
     if (!content.trim() && files.length === 0) return;
     if (disabled) return;
@@ -33,9 +40,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     setContent('');
     setFiles([]);
 
-    // 높이 초기화
+    // 높이 초기화 및 포커스 복원
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
+      // 메시지 전송 후 입력창에 다시 포커스
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 0);
     }
   };
 
@@ -54,6 +65,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const removeFile = (index: number) => {
     setFiles(files.filter((_, i) => i !== index));
+    // 파일 제거 후 입력창에 포커스 복원
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 0);
   };
 
   return (
