@@ -13,6 +13,9 @@ from app.models.user import User
 from app.schemas.message import Message, MessageCreate, MessageUpdate
 from app.routers.auth import get_current_user
 from app.services.ai import AIService
+from app.config import get_settings
+
+settings = get_settings()
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -197,6 +200,9 @@ async def generate_message(
     await db.refresh(user_message)
 
     # Create AI message placeholder
+    # Use default model based on provider if not specified
+    default_model = settings.openai_model if settings.default_ai_provider == "openai" else settings.ollama_model
+
     ai_message_id = str(uuid4())
     ai_message = MessageModel(
         id=ai_message_id,
@@ -205,7 +211,7 @@ async def generate_message(
         children_ids=[],
         role="assistant",
         content="",
-        model=message_create.model or "gpt-3.5-turbo",
+        model=message_create.model or default_model,
         status=MessageStatus.STREAMING
     )
 
@@ -236,10 +242,17 @@ async def generate_message(
         full_content = ""
 
         try:
+            # Determine provider: use default from settings, or infer from model name
+            provider = settings.default_ai_provider
+            if "gpt" in ai_message.model.lower() or "openai" in ai_message.model.lower():
+                provider = "openai"
+            elif "llama" in ai_message.model.lower() or "mistral" in ai_message.model.lower():
+                provider = "ollama"
+
             async for chunk in ai_service.generate_completion_stream(
                 messages=conversation,
                 model=ai_message.model,
-                provider="openai" if "gpt" in ai_message.model.lower() else "ollama"
+                provider=provider
             ):
                 full_content += chunk
 
