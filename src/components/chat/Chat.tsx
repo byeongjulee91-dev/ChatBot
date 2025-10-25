@@ -77,7 +77,7 @@ export const Chat: React.FC<ChatProps> = ({ chatId }) => {
         <div className="max-w-4xl mx-auto">
           <MessageInput
             onSend={handleSendMessage}
-            disabled={generating}
+            generating={generating}
           />
         </div>
       </footer>

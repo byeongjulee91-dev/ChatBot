@@ -3,13 +3,13 @@ import { Button } from '@/components/ui';
 
 interface MessageInputProps {
   onSend: (content: string, files?: File[]) => void;
-  disabled?: boolean;
+  generating?: boolean;
   placeholder?: string;
 }
 
 export const MessageInput: React.FC<MessageInputProps> = ({
   onSend,
-  disabled = false,
+  generating = false,
   placeholder = '메시지를 입력하세요... (Enter: 전송, Shift+Enter: 줄바꿈)',
 }) => {
   const [content, setContent] = useState('');
@@ -27,14 +27,14 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   // 컴포넌트 마운트 시 자동 포커스
   useEffect(() => {
-    if (textareaRef.current && !disabled) {
+    if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [disabled]);
+  }, []);
 
   const handleSend = () => {
     if (!content.trim() && files.length === 0) return;
-    if (disabled) return;
+    if (generating) return;
 
     onSend(content, files);
     setContent('');
@@ -121,7 +121,6 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             multiple
             onChange={handleFileChange}
             className="hidden"
-            disabled={disabled}
           />
           <div className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
             <svg
@@ -148,33 +147,50 @@ export const MessageInput: React.FC<MessageInputProps> = ({
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            disabled={disabled}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             rows={1}
             style={{ minHeight: '48px', maxHeight: '200px' }}
           />
+          {generating && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce delay-75" />
+                  <div className="w-1.5 h-1.5 bg-primary-500 rounded-full animate-bounce delay-150" />
+                </div>
+                <span>AI 응답 생성 중...</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 전송 버튼 */}
         <Button
           onClick={handleSend}
-          disabled={disabled || (!content.trim() && files.length === 0)}
+          disabled={generating || (!content.trim() && files.length === 0)}
           variant="primary"
           className="px-6 py-3 h-12"
         >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-            />
-          </svg>
+          {generating ? (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              />
+            </svg>
+          )}
         </Button>
       </div>
 
