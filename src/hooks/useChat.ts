@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useChatStore } from '@/store';
 import { Message } from '@/types';
+import { messagesApi } from '@/services/api';
 import { v4 as uuidv4 } from 'uuid';
 
 export function useChat(chatId: string) {
@@ -16,72 +17,107 @@ export function useChat(chatId: string) {
   // 현재 채팅의 메시지 가져오기
   const chatMessages = getMessagesByChat(chatId);
 
-  // 메시지 전송 (시뮬레이션)
+  // 메시지 전송 (실제 API)
   const sendMessage = useCallback(
     async (content: string, files?: File[]) => {
       if (!content.trim() && (!files || files.length === 0)) return;
 
-      // 사용자 메시지 추가
-      const userMessageId = uuidv4();
-      const lastMessage = chatMessages[chatMessages.length - 1];
-
-      const userMessage: Message = {
-        id: userMessageId,
-        chatId,
-        parentId: lastMessage?.id || null,
-        childrenIds: [],
-        role: 'user',
-        content,
-        timestamp: Date.now(),
-        status: 'completed',
-      };
-
-      addMessage(userMessage);
-
-      // AI 응답 시뮬레이션
       setGenerating(true);
 
-      // AI 메시지 생성
-      const aiMessageId = uuidv4();
-      const aiMessage: Message = {
-        id: aiMessageId,
-        chatId,
-        parentId: userMessageId,
-        childrenIds: [],
-        role: 'assistant',
-        content: '',
-        timestamp: Date.now(),
-        status: 'streaming',
-      };
+      try {
+        // Prepare file data if any
+        const fileData = files?.map((file) => ({
+          id: uuidv4(),
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: '', // TODO: Upload files to server first
+        }));
 
-      // 부모 메시지의 자식으로 추가
-      if (lastMessage) {
-        updateMessage(lastMessage.id, {
-          childrenIds: [...lastMessage.childrenIds, userMessageId],
+        const lastMessage = chatMessages[chatMessages.length - 1];
+
+        // Create user message locally (will be created on backend too)
+        const userMessageId = uuidv4();
+        const userMessage: Message = {
+          id: userMessageId,
+          chatId,
+          parentId: lastMessage?.id || null,
+          childrenIds: [],
+          role: 'user',
+          content,
+          timestamp: Date.now(),
+          status: 'completed',
+          files: fileData,
+        };
+
+        addMessage(userMessage);
+
+        // Update parent message's children
+        if (lastMessage) {
+          updateMessage(lastMessage.id, {
+            childrenIds: [...lastMessage.childrenIds, userMessageId],
+          });
+        }
+
+        // Create placeholder assistant message
+        const aiMessageId = uuidv4();
+        const aiMessage: Message = {
+          id: aiMessageId,
+          chatId,
+          parentId: userMessageId,
+          childrenIds: [],
+          role: 'assistant',
+          content: '',
+          timestamp: Date.now(),
+          status: 'streaming',
+        };
+
+        addMessage(aiMessage);
+        updateMessage(userMessageId, {
+          childrenIds: [aiMessageId],
         });
+
+        // Call backend streaming API
+        let streamedContent = '';
+
+        await messagesApi.generateStream(
+          {
+            chat_id: chatId,
+            parent_id: lastMessage?.id || undefined,
+            content,
+            role: 'user',
+            files: fileData,
+          },
+          // onChunk
+          (chunk: string, messageId: string) => {
+            streamedContent += chunk;
+            updateMessage(aiMessageId, {
+              id: messageId, // Update with backend message ID
+              content: streamedContent,
+              status: 'streaming',
+            });
+          },
+          // onComplete
+          (messageId: string) => {
+            updateMessage(aiMessageId, {
+              id: messageId,
+              status: 'completed',
+            });
+            setGenerating(false);
+          },
+          // onError
+          (error: string) => {
+            updateMessage(aiMessageId, {
+              content: `Error: ${error}`,
+              status: 'error',
+            });
+            setGenerating(false);
+          }
+        );
+      } catch (error: any) {
+        console.error('Failed to send message:', error);
+        setGenerating(false);
       }
-      updateMessage(userMessageId, {
-        childrenIds: [aiMessageId],
-      });
-
-      addMessage(aiMessage);
-
-      // 스트리밍 시뮬레이션
-      const responseText = `안녕하세요! 귀하의 메시지 "${content}"를 받았습니다. 이것은 시뮬레이션된 응답입니다. 실제 AI 백엔드를 연결하면 실제 응답을 받을 수 있습니다.`;
-
-      let currentContent = '';
-      const words = responseText.split(' ');
-
-      for (let i = 0; i < words.length; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        currentContent += (i > 0 ? ' ' : '') + words[i];
-        updateMessage(aiMessageId, {
-          content: currentContent,
-          status: i === words.length - 1 ? 'completed' : 'streaming',
-        });
-      }
-
-      setGenerating(false);
     },
     [chatId, chatMessages, addMessage, updateMessage, setGenerating]
   );
@@ -92,6 +128,9 @@ export function useChat(chatId: string) {
       const message = messages[messageId];
       if (!message || message.role !== 'assistant') return;
 
+      const parentMessage = message.parentId ? messages[message.parentId] : null;
+      if (!parentMessage) return;
+
       setGenerating(true);
 
       // 메시지 내용 초기화
@@ -100,23 +139,53 @@ export function useChat(chatId: string) {
         status: 'streaming',
       });
 
-      // 재생성 시뮬레이션
-      const responseText = '재생성된 응답입니다. 실제 AI 백엔드를 연결하면 다른 응답을 받을 수 있습니다.';
-      let currentContent = '';
-      const words = responseText.split(' ');
+      try {
+        // Call backend streaming API for regeneration
+        let streamedContent = '';
 
-      for (let i = 0; i < words.length; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        currentContent += (i > 0 ? ' ' : '') + words[i];
+        await messagesApi.generateStream(
+          {
+            chat_id: chatId,
+            parent_id: parentMessage.parentId || undefined,
+            content: parentMessage.content,
+            role: 'user',
+          },
+          // onChunk
+          (chunk: string, backendMessageId: string) => {
+            streamedContent += chunk;
+            updateMessage(messageId, {
+              id: backendMessageId,
+              content: streamedContent,
+              status: 'streaming',
+            });
+          },
+          // onComplete
+          (backendMessageId: string) => {
+            updateMessage(messageId, {
+              id: backendMessageId,
+              status: 'completed',
+            });
+            setGenerating(false);
+          },
+          // onError
+          (error: string) => {
+            updateMessage(messageId, {
+              content: `Error: ${error}`,
+              status: 'error',
+            });
+            setGenerating(false);
+          }
+        );
+      } catch (error: any) {
+        console.error('Failed to regenerate message:', error);
         updateMessage(messageId, {
-          content: currentContent,
-          status: i === words.length - 1 ? 'completed' : 'streaming',
+          content: `Error: ${error.message || 'Failed to regenerate'}`,
+          status: 'error',
         });
+        setGenerating(false);
       }
-
-      setGenerating(false);
     },
-    [messages, updateMessage, setGenerating]
+    [chatId, messages, updateMessage, setGenerating]
   );
 
   // 메시지 편집
@@ -144,25 +213,55 @@ export function useChat(chatId: string) {
             status: 'streaming',
           });
 
-          // AI 응답 재생성 시뮬레이션
-          const responseText = `수정된 메시지 "${newContent}"에 대한 새로운 응답입니다. 실제 AI 백엔드를 연결하면 수정된 내용에 맞는 응답을 받을 수 있습니다.`;
-          let currentContent = '';
-          const words = responseText.split(' ');
+          try {
+            // Call backend streaming API for regeneration with edited content
+            let streamedContent = '';
 
-          for (let i = 0; i < words.length; i++) {
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            currentContent += (i > 0 ? ' ' : '') + words[i];
+            await messagesApi.generateStream(
+              {
+                chat_id: chatId,
+                parent_id: message.parentId || undefined,
+                content: newContent,
+                role: 'user',
+              },
+              // onChunk
+              (chunk: string, backendMessageId: string) => {
+                streamedContent += chunk;
+                updateMessage(assistantMessageId, {
+                  id: backendMessageId,
+                  content: streamedContent,
+                  status: 'streaming',
+                });
+              },
+              // onComplete
+              (backendMessageId: string) => {
+                updateMessage(assistantMessageId, {
+                  id: backendMessageId,
+                  status: 'completed',
+                });
+                setGenerating(false);
+              },
+              // onError
+              (error: string) => {
+                updateMessage(assistantMessageId, {
+                  content: `Error: ${error}`,
+                  status: 'error',
+                });
+                setGenerating(false);
+              }
+            );
+          } catch (error: any) {
+            console.error('Failed to regenerate message after edit:', error);
             updateMessage(assistantMessageId, {
-              content: currentContent,
-              status: i === words.length - 1 ? 'completed' : 'streaming',
+              content: `Error: ${error.message || 'Failed to regenerate'}`,
+              status: 'error',
             });
+            setGenerating(false);
           }
-
-          setGenerating(false);
         }
       }
     },
-    [messages, updateMessage, setGenerating]
+    [chatId, messages, updateMessage, setGenerating]
   );
 
   return {
