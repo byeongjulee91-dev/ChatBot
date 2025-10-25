@@ -119,10 +119,25 @@ export function useChat(chatId: string) {
     [messages, updateMessage, setGenerating]
   );
 
+  // 메시지 편집
+  const editMessage = useCallback(
+    (messageId: string, newContent: string) => {
+      const message = messages[messageId];
+      if (!message) return;
+
+      // 메시지 내용 업데이트
+      updateMessage(messageId, {
+        content: newContent,
+      });
+    },
+    [messages, updateMessage]
+  );
+
   return {
     messages: chatMessages,
     generating,
     sendMessage,
     regenerateMessage,
+    editMessage,
   };
 }
