@@ -21,26 +21,32 @@ FastAPI 기반 AI 챗봇 백엔드 서버
 - **JWT**: 인증 토큰
 - **OpenAI API**: GPT 모델 통합
 - **Ollama**: 로컬 LLM 지원
+- **uv**: 빠른 Python 패키지 관리자
 
 ## 설치
 
-### 1. 가상환경 생성 및 활성화
+### 1. uv 설치
+
+uv를 사용하여 빠르게 의존성을 관리합니다.
+
+```bash
+# Linux/Mac
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+### 2. 프로젝트 설정
 
 ```bash
 cd backend
-python -m venv venv
 
-# Windows
-venv\Scripts\activate
+# 가상환경 생성 (.venv)
+uv venv
 
-# Linux/Mac
-source venv/bin/activate
-```
-
-### 2. 의존성 설치
-
-```bash
-pip install -r requirements.txt
+# 의존성 설치
+uv pip install -e .
 ```
 
 ### 3. 환경변수 설정
@@ -72,23 +78,45 @@ DEFAULT_AI_PROVIDER="ollama"
 
 ## 실행
 
-### 개발 모드
+### 개발 모드 (권장)
+
+**방법 1: 실행 스크립트 사용 (가장 간단)**
 
 ```bash
-cd backend
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Linux/Mac
+./run.sh
+
+# Windows
+run.bat
 ```
 
-또는:
+실행 스크립트는 자동으로:
+- uv 설치 확인
+- 가상환경 생성 (없는 경우)
+- 의존성 설치
+- .env 파일 확인
+- 서버 시작
+
+**방법 2: uv run 직접 사용**
 
 ```bash
-python app/main.py
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+**방법 3: 가상환경 활성화 후 실행**
+
+```bash
+# 가상환경 활성화
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 서버 실행
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 프로덕션 모드
 
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 서버가 실행되면 다음 주소로 접속할 수 있습니다:
@@ -146,8 +174,11 @@ backend/
 │   │   └── ai.py
 │   └── utils/               # 유틸리티
 │       └── security.py
-├── requirements.txt
+├── pyproject.toml           # 프로젝트 설정 및 의존성
+├── requirements.txt         # (레거시 - pyproject.toml 사용 권장)
 ├── .env.example
+├── run.sh                   # Linux/Mac 실행 스크립트
+├── run.bat                  # Windows 실행 스크립트
 └── README.md
 ```
 
@@ -169,19 +200,35 @@ DATABASE_URL="mysql+aiomysql://user:password@localhost/chatbot"
 
 ## 개발
 
+### 개발 도구 설치
+
+pyproject.toml에 정의된 개발 도구를 설치합니다:
+
+```bash
+uv pip install -e ".[dev]"
+```
+
 ### 코드 포맷팅
 
 ```bash
-pip install black isort
-black app/
-isort app/
+# Black (코드 포맷터)
+uv run black app/
+
+# isort (import 정렬)
+uv run isort app/
+
+# Ruff (빠른 린터)
+uv run ruff check app/
 ```
 
 ### 테스트
 
 ```bash
-pip install pytest pytest-asyncio httpx
-pytest
+# 테스트 실행
+uv run pytest
+
+# 커버리지와 함께 실행
+uv run pytest --cov=app
 ```
 
 ## 배포
