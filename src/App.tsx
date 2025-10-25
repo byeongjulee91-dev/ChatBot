@@ -1,18 +1,52 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Chat, Sidebar } from '@/components/chat';
-import { useChatStore, useUIStore } from '@/store';
+import { LoginForm, RegisterForm } from '@/components/auth';
+import { useAuthStore, useChatStore, useUIStore } from '@/store';
 
 function App() {
+  const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
   const { currentChatId, createChat } = useChatStore();
   const { showSidebar } = useUIStore();
+  const [showRegister, setShowRegister] = useState(false);
 
-  // 초기 채팅 생성
+  // Check authentication on mount
   useEffect(() => {
-    if (!currentChatId) {
+    checkAuth();
+  }, [checkAuth]);
+
+  // 초기 채팅 생성 (인증된 경우에만)
+  useEffect(() => {
+    if (isAuthenticated && !currentChatId) {
       createChat();
     }
-  }, [currentChatId, createChat]);
+  }, [isAuthenticated, currentChatId, createChat]);
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated - show login/register
+  if (!isAuthenticated) {
+    return (
+      <>
+        {showRegister ? (
+          <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />
+        ) : (
+          <LoginForm onSwitchToRegister={() => setShowRegister(true)} />
+        )}
+      </>
+    );
+  }
+
+  // Authenticated - show chat
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Sidebar */}
@@ -41,7 +75,7 @@ function App() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                AI ChatBot에 오신 것을 환영합니다
+                환영합니다, {user?.username}님!
               </h2>
               <p className="text-gray-600 mb-6">
                 새로운 대화를 시작하여 AI와 대화해보세요
