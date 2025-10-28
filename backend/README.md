@@ -51,26 +51,115 @@ uv pip install -e .
 
 ### 3. 환경변수 설정
 
-`.env.example`을 복사하여 `.env` 파일을 생성하고 필요한 값을 설정합니다:
+`.env.example`을 복사하여 `.env` 파일을 생성합니다:
 
 ```bash
 cp .env.example .env
 ```
 
-`.env` 파일 수정:
+**중요:** `.env` 파일에는 모든 필수 환경 변수가 포함되어 있어야 합니다.
 
+#### 필수 설정 항목
+
+**Application (애플리케이션 설정)**
 ```env
-# 필수: SECRET_KEY 변경
-SECRET_KEY="your-secret-key-here-change-in-production"
+APP_NAME="AI ChatBot API"
+DEBUG=True
+API_V1_PREFIX="/api/v1"
+```
 
-# OpenAI 사용 시
-OPENAI_API_KEY="sk-..."
-DEFAULT_AI_PROVIDER="openai"
+**Database (데이터베이스 설정)**
+```env
+# SQLite (기본값)
+DATABASE_URL="sqlite+aiosqlite:///./chatbot.db"
 
-# Ollama 사용 시
+# PostgreSQL 사용 시
+# DATABASE_URL="postgresql+asyncpg://user:password@localhost/chatbot"
+```
+
+**Security (보안 설정)**
+```env
+SECRET_KEY="your-secret-key-here-change-in-production-PLEASE-CHANGE-THIS"
+ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+
+**CORS (CORS 설정)**
+```env
+CORS_ORIGINS=["http://localhost:5173", "http://localhost:3000"]
+```
+
+**AI Model Configuration (AI 모델 설정)**
+```env
+# OpenAI 설정 (OpenAI 사용 시)
+OPENAI_API_KEY=""                    # OpenAI API 키 (사용 시 입력)
+OPENAI_MODEL="gpt-3.5-turbo"
+
+# Ollama 설정 (로컬 LLM 사용 시)
 OLLAMA_BASE_URL="http://localhost:11434"
+OLLAMA_MODEL="llama2"
+
+# 기본 AI 제공자 선택: "openai" 또는 "ollama"
 DEFAULT_AI_PROVIDER="ollama"
 ```
+
+**File Upload (파일 업로드 설정)**
+```env
+MAX_UPLOAD_SIZE=10485760             # 10MB
+UPLOAD_DIR="./uploads"
+```
+
+**Redis (Redis 설정 - 선택사항)**
+```env
+REDIS_URL="redis://localhost:6379/0"
+ENABLE_REDIS=False
+```
+
+#### Ollama 설정 (로컬 LLM 사용)
+
+1. **Ollama 설치**
+   ```bash
+   # Linux/Mac
+   curl https://ollama.ai/install.sh | sh
+
+   # 또는 https://ollama.ai 에서 다운로드
+   ```
+
+2. **모델 다운로드**
+   ```bash
+   # Llama 2 모델 다운로드 (권장)
+   ollama pull llama2
+
+   # 다른 모델들
+   ollama pull mistral      # Mistral 7B
+   ollama pull mixtral      # Mixtral 8x7B
+   ollama pull phi          # Microsoft Phi-2
+   ```
+
+3. **Ollama 서버 실행**
+   ```bash
+   ollama serve
+   ```
+
+4. **.env 설정**
+   ```env
+   OLLAMA_BASE_URL="http://localhost:11434"
+   OLLAMA_MODEL="llama2"
+   DEFAULT_AI_PROVIDER="ollama"
+   OPENAI_API_KEY=""                # 비워두기
+   ```
+
+#### OpenAI 설정
+
+1. **API 키 발급**
+   - https://platform.openai.com/api-keys 에서 API 키 생성
+
+2. **.env 설정**
+   ```env
+   OPENAI_API_KEY="sk-proj-..."
+   OPENAI_MODEL="gpt-3.5-turbo"     # 또는 gpt-4
+   DEFAULT_AI_PROVIDER="openai"
+   ```
 
 ### 4. 데이터베이스 초기화
 
