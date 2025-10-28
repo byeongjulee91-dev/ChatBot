@@ -201,7 +201,12 @@ async def generate_message(
 
     # Create AI message placeholder
     # Use default model based on provider if not specified
-    default_model = settings.openai_model if settings.default_ai_provider == "openai" else settings.ollama_model
+    if settings.default_ai_provider == "openai":
+        default_model = settings.openai_model
+    elif settings.default_ai_provider == "gemini":
+        default_model = settings.gemini_model
+    else:
+        default_model = settings.ollama_model
 
     ai_message_id = str(uuid4())
     ai_message = MessageModel(
@@ -244,10 +249,16 @@ async def generate_message(
         try:
             # Determine provider: use default from settings, or infer from model name
             provider = settings.default_ai_provider
-            if "gpt" in ai_message.model.lower() or "openai" in ai_message.model.lower():
+            model_lower = ai_message.model.lower()
+
+            if "gpt" in model_lower or "openai" in model_lower:
                 provider = "openai"
-            elif "llama" in ai_message.model.lower() or "mistral" in ai_message.model.lower():
+            elif "gemini" in model_lower:
+                provider = "gemini"
+            elif "llama" in model_lower or "mistral" in model_lower or "qwen" in model_lower:
                 provider = "ollama"
+
+            print(f"Using provider: {provider}, model: {ai_message.model}")
 
             async for chunk in ai_service.generate_completion_stream(
                 messages=conversation,
@@ -273,6 +284,11 @@ async def generate_message(
             yield f"data: {json.dumps({'done': True, 'message_id': ai_message_id})}\n\n"
 
         except Exception as e:
+            # Log error for debugging
+            import traceback
+            print(f"Error generating AI response: {str(e)}")
+            print(f"Traceback: {traceback.format_exc()}")
+
             # Update message status to error
             async with AsyncSessionLocal() as update_db:
                 result = await update_db.execute(
@@ -281,7 +297,7 @@ async def generate_message(
                 msg = result.scalar_one_or_none()
                 if msg:
                     msg.status = MessageStatus.ERROR
-                    msg.content = full_content or "Error generating response"
+                    msg.content = full_content or f"Error generating response: {str(e)}"
                     await update_db.commit()
 
             yield f"data: {json.dumps({'error': str(e), 'message_id': ai_message_id})}\n\n"
