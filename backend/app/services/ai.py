@@ -11,8 +11,16 @@ class AIService:
 
     def __init__(self):
         self.openai_client = None
+        self.gemini_client = None
+
         if settings.openai_api_key:
             self.openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
+
+        if settings.gemini_api_key:
+            self.gemini_client = AsyncOpenAI(
+                api_key=settings.gemini_api_key,
+                base_url=settings.gemini_base_url
+            )
 
     async def generate_completion_stream(
         self,
@@ -22,13 +30,24 @@ class AIService:
     ) -> AsyncGenerator[str, None]:
         """Generate streaming completion from AI model"""
         provider = provider or settings.default_ai_provider
-        model = model or (settings.openai_model if provider == "openai" else settings.ollama_model)
+
+        # Determine model based on provider
+        if not model:
+            if provider == "openai":
+                model = settings.openai_model
+            elif provider == "ollama":
+                model = settings.ollama_model
+            elif provider == "gemini":
+                model = settings.gemini_model
 
         if provider == "openai":
             async for chunk in self._generate_openai_stream(messages, model):
                 yield chunk
         elif provider == "ollama":
             async for chunk in self._generate_ollama_stream(messages, model):
+                yield chunk
+        elif provider == "gemini":
+            async for chunk in self._generate_gemini_stream(messages, model):
                 yield chunk
         else:
             raise ValueError(f"Unknown AI provider: {provider}")
@@ -78,6 +97,25 @@ class AIService:
                         data = json.loads(line)
                         if "message" in data and "content" in data["message"]:
                             yield data["message"]["content"]
+
+    async def _generate_gemini_stream(
+        self,
+        messages: list[dict],
+        model: str
+    ) -> AsyncGenerator[str, None]:
+        """Generate streaming completion from Gemini using OpenAI-compatible endpoint"""
+        if not self.gemini_client:
+            raise ValueError("Gemini API key not configured")
+
+        stream = await self.gemini_client.chat.completions.create(
+            model=model,
+            messages=messages,
+            stream=True
+        )
+
+        async for chunk in stream:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
 
     async def generate_completion(
         self,

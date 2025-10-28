@@ -32,7 +32,12 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama2"
 
-    default_ai_provider: str = "openai"  # "openai" or "ollama"
+    # Gemini Configuration (OpenAI-compatible endpoint)
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+    default_ai_provider: str = "openai"  # "openai", "ollama", or "gemini"
 
     # File Upload
     max_upload_size: int = 10485760  # 10MB
